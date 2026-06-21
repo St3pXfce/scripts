@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 local flying = false
-local lockEnabled = false
+local frozen = false
 local speed = 50
 
 local bodyVelocity
@@ -13,8 +13,6 @@ local bodyGyro
 local flyConnection
 local noclipConnection
 local healthConnection
-
-local lockedCFrame
 
 ------------------------------------------------
 -- INVINCIBILITY
@@ -105,16 +103,17 @@ local function startFlying()
 	flyConnection = RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
 
-		-- LOCK SYSTEM (ONLY IF G ENABLED)
-		if lockEnabled and lockedCFrame then
-			hrp.CFrame = lockedCFrame
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			hrp.AssemblyAngularVelocity = Vector3.zero
-		end
-
 		bodyGyro.CFrame = camera.CFrame
 
 		local moveDirection = Vector3.zero
+
+		-- ❗ FREEZE OVERRIDE
+		if frozen then
+			bodyVelocity.Velocity = Vector3.zero
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+			return
+		end
 
 		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
 			moveDirection += camera.CFrame.LookVector
@@ -145,6 +144,7 @@ end
 
 local function stopFlying()
 	flying = false
+	frozen = false
 
 	if flyConnection then
 		flyConnection:Disconnect()
@@ -167,12 +167,12 @@ local function stopFlying()
 end
 
 ------------------------------------------------
--- INPUT CONTROLS
+-- INPUT
 ------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
-	-- FLY TOGGLE (E)
+	-- E = FLY
 	if input.KeyCode == Enum.KeyCode.E then
 		flying = not flying
 
@@ -183,22 +183,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 
-	-- LOCK TOGGLE (G)
+	-- G = FREEZE
 	if input.KeyCode == Enum.KeyCode.G then
-		lockEnabled = not lockEnabled
-
-		local character = player.Character
-		if character then
-			local hrp = character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				lockedCFrame = hrp.CFrame
-			end
-		end
+		frozen = not frozen
 	end
 end)
 
 ------------------------------------------------
--- RESPAWN HANDLING
+-- RESPAWN
 ------------------------------------------------
 player.CharacterAdded:Connect(function()
 	task.wait(0.5)
