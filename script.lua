@@ -11,37 +11,38 @@ local bodyVelocity
 local bodyGyro
 local flyConnection
 local noclipConnection
-local healthConnection
 
--- INVINCIBILITY
+------------------------------------------------
+-- INVINCIBILITY (FIXED)
+------------------------------------------------
 local function startInvincible()
 	local character = player.Character
 	if not character then return end
 
 	local humanoid = character:WaitForChild("Humanoid")
-
 	humanoid.BreakJointsOnDeath = false
 
-	if healthConnection then
-		healthConnection:Disconnect()
-		healthConnection = nil
-	end
+	local old = character:FindFirstChildOfClass("ForceField")
+	if old then old:Destroy() end
 
-	healthConnection = humanoid.HealthChanged:Connect(function()
-		if flying and humanoid.Health < humanoid.MaxHealth then
-			humanoid.Health = humanoid.MaxHealth
-		end
-	end)
+	local ff = Instance.new("ForceField")
+	ff.Visible = false
+	ff.Parent = character
 end
 
 local function stopInvincible()
-	if healthConnection then
-		healthConnection:Disconnect()
-		healthConnection = nil
+	local character = player.Character
+	if not character then return end
+
+	local ff = character:FindFirstChildOfClass("ForceField")
+	if ff then
+		ff:Destroy()
 	end
 end
 
+------------------------------------------------
 -- NOCLIP
+------------------------------------------------
 local function startNoclip()
 	noclipConnection = RunService.Stepped:Connect(function()
 		local char = player.Character
@@ -71,12 +72,14 @@ local function stopNoclip()
 	end
 end
 
+------------------------------------------------
 -- FLY
+------------------------------------------------
 local function startFlying()
 	local character = player.Character or player.CharacterAdded:Wait()
 	local hrp = character:WaitForChild("HumanoidRootPart")
-
 	local humanoid = character:WaitForChild("Humanoid")
+
 	humanoid.PlatformStand = true
 
 	bodyVelocity = Instance.new("BodyVelocity")
@@ -147,7 +150,9 @@ local function stopFlying()
 	if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
 end
 
--- TOGGLE KEY
+------------------------------------------------
+-- TOGGLE KEY (E)
+------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
@@ -162,9 +167,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- HANDLE RESPAWN
+------------------------------------------------
+-- RESPAWN SUPPORT
+------------------------------------------------
 player.CharacterAdded:Connect(function()
-	task.wait(1)
+	task.wait(0.5)
 
 	if flying then
 		startFlying()
