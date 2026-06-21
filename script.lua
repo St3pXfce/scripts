@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 local flying = false
+local lockEnabled = false
 local speed = 50
 
 local bodyVelocity
@@ -13,7 +14,6 @@ local flyConnection
 local noclipConnection
 local healthConnection
 
--- saved position lock (anti teleport)
 local lockedCFrame
 
 ------------------------------------------------
@@ -82,7 +82,7 @@ local function stopNoclip()
 end
 
 ------------------------------------------------
--- FLY + ANTI MOVE / ANTI TELEPORT
+-- FLY
 ------------------------------------------------
 local function startFlying()
 	local character = player.Character or player.CharacterAdded:Wait()
@@ -90,8 +90,6 @@ local function startFlying()
 	local humanoid = character:WaitForChild("Humanoid")
 
 	humanoid.PlatformStand = true
-
-	lockedCFrame = hrp.CFrame
 
 	bodyVelocity = Instance.new("BodyVelocity")
 	bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -107,8 +105,8 @@ local function startFlying()
 	flyConnection = RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
 
-		-- LOCK POSITION HARD (anti teleport / anti push)
-		if lockedCFrame then
+		-- LOCK SYSTEM (ONLY IF G ENABLED)
+		if lockEnabled and lockedCFrame then
 			hrp.CFrame = lockedCFrame
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
@@ -147,7 +145,6 @@ end
 
 local function stopFlying()
 	flying = false
-	lockedCFrame = nil
 
 	if flyConnection then
 		flyConnection:Disconnect()
@@ -170,11 +167,12 @@ local function stopFlying()
 end
 
 ------------------------------------------------
--- TOGGLE (E)
+-- INPUT CONTROLS
 ------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
+	-- FLY TOGGLE (E)
 	if input.KeyCode == Enum.KeyCode.E then
 		flying = not flying
 
@@ -184,10 +182,23 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			stopFlying()
 		end
 	end
+
+	-- LOCK TOGGLE (G)
+	if input.KeyCode == Enum.KeyCode.G then
+		lockEnabled = not lockEnabled
+
+		local character = player.Character
+		if character then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				lockedCFrame = hrp.CFrame
+			end
+		end
+	end
 end)
 
 ------------------------------------------------
--- RESPAWN
+-- RESPAWN HANDLING
 ------------------------------------------------
 player.CharacterAdded:Connect(function()
 	task.wait(0.5)
