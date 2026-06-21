@@ -13,26 +13,26 @@ local flyConnection
 local noclipConnection
 local healthConnection
 
+-- saved position lock (anti teleport)
+local lockedCFrame
+
 ------------------------------------------------
--- INVINCIBILITY (REAL FIX)
+-- INVINCIBILITY
 ------------------------------------------------
 local function startInvincible()
 	local character = player.Character
 	if not character then return end
 
 	local humanoid = character:WaitForChild("Humanoid")
-
 	humanoid.BreakJointsOnDeath = false
 
-	-- ForceField (basic protection)
-	local oldFF = character:FindFirstChildOfClass("ForceField")
-	if oldFF then oldFF:Destroy() end
+	local ff = character:FindFirstChildOfClass("ForceField")
+	if ff then ff:Destroy() end
 
-	local ff = Instance.new("ForceField")
+	ff = Instance.new("ForceField")
 	ff.Visible = false
 	ff.Parent = character
 
-	-- HARD health lock (prevents custom damage systems)
 	if healthConnection then
 		healthConnection:Disconnect()
 		healthConnection = nil
@@ -79,19 +79,10 @@ local function stopNoclip()
 		noclipConnection:Disconnect()
 		noclipConnection = nil
 	end
-
-	local char = player.Character
-	if not char then return end
-
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			obj.CanCollide = true
-		end
-	end
 end
 
 ------------------------------------------------
--- FLY
+-- FLY + ANTI MOVE / ANTI TELEPORT
 ------------------------------------------------
 local function startFlying()
 	local character = player.Character or player.CharacterAdded:Wait()
@@ -99,6 +90,8 @@ local function startFlying()
 	local humanoid = character:WaitForChild("Humanoid")
 
 	humanoid.PlatformStand = true
+
+	lockedCFrame = hrp.CFrame
 
 	bodyVelocity = Instance.new("BodyVelocity")
 	bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -113,6 +106,13 @@ local function startFlying()
 
 	flyConnection = RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
+
+		-- LOCK POSITION HARD (anti teleport / anti push)
+		if lockedCFrame then
+			hrp.CFrame = lockedCFrame
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+		end
 
 		bodyGyro.CFrame = camera.CFrame
 
@@ -147,6 +147,7 @@ end
 
 local function stopFlying()
 	flying = false
+	lockedCFrame = nil
 
 	if flyConnection then
 		flyConnection:Disconnect()
@@ -186,13 +187,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 ------------------------------------------------
--- RESPAWN HANDLING
+-- RESPAWN
 ------------------------------------------------
 player.CharacterAdded:Connect(function()
 	task.wait(0.5)
 
 	if flying then
 		startFlying()
-		startInvincible()
 	end
 end)
