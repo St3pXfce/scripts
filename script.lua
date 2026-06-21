@@ -11,23 +11,38 @@ local bodyVelocity
 local bodyGyro
 local flyConnection
 local noclipConnection
+local healthConnection
 
 ------------------------------------------------
--- INVINCIBILITY (FIXED)
+-- INVINCIBILITY (REAL FIX)
 ------------------------------------------------
 local function startInvincible()
 	local character = player.Character
 	if not character then return end
 
 	local humanoid = character:WaitForChild("Humanoid")
+
 	humanoid.BreakJointsOnDeath = false
 
-	local old = character:FindFirstChildOfClass("ForceField")
-	if old then old:Destroy() end
+	-- ForceField (basic protection)
+	local oldFF = character:FindFirstChildOfClass("ForceField")
+	if oldFF then oldFF:Destroy() end
 
 	local ff = Instance.new("ForceField")
 	ff.Visible = false
 	ff.Parent = character
+
+	-- HARD health lock (prevents custom damage systems)
+	if healthConnection then
+		healthConnection:Disconnect()
+		healthConnection = nil
+	end
+
+	healthConnection = humanoid.HealthChanged:Connect(function()
+		if flying and humanoid.Health < humanoid.MaxHealth then
+			humanoid.Health = humanoid.MaxHealth
+		end
+	end)
 end
 
 local function stopInvincible()
@@ -35,8 +50,11 @@ local function stopInvincible()
 	if not character then return end
 
 	local ff = character:FindFirstChildOfClass("ForceField")
-	if ff then
-		ff:Destroy()
+	if ff then ff:Destroy() end
+
+	if healthConnection then
+		healthConnection:Disconnect()
+		healthConnection = nil
 	end
 end
 
@@ -151,7 +169,7 @@ local function stopFlying()
 end
 
 ------------------------------------------------
--- TOGGLE KEY (E)
+-- TOGGLE (E)
 ------------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
@@ -168,12 +186,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 ------------------------------------------------
--- RESPAWN SUPPORT
+-- RESPAWN HANDLING
 ------------------------------------------------
 player.CharacterAdded:Connect(function()
 	task.wait(0.5)
 
 	if flying then
 		startFlying()
+		startInvincible()
 	end
 end)
